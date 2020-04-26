@@ -5,6 +5,19 @@ const END_CLASS = 'end';
 const BOX_CLASS = 'box';
 const ROW_CLASS = 'row';
 
+
+function classNames(classes) {
+    const classList = [];
+
+    for (let cls in classes) {
+        if (classes[cls]) {
+            classList.push(cls);
+        }
+    }
+
+    return classList.join(' ');
+}
+
 const manager = {
     state: {
         startEnd: [],
@@ -30,35 +43,66 @@ const manager = {
     createReactiveHandler: function(f) {
         const reactiveHandler = (...args) => {
             f(...args);
-            this.render();
+            this.reRender();
         }
 
         return reactiveHandler;
     },
 
+
+    handleMouseEnter: function (event) {
+        console.log('entered');
+    },
+
     handleClick: function (event) {
         const box = event.target;
 
-        if (box.classList.contains(WALL_CLASS)) {
-            box.classList.remove(WALL_CLASS);
-        } else {
-            if (this.state.startEnd.length < 2 && !box.classList.contains(END_CLASS)) {
-                clickedNodes.push(box);
-            } else {
-                clickedNodes.forEach(box => box.classList.remove(END_CLASS));
-                clickedNodes = [box];
-            }
+        const { i, j } = box.dataset;
 
-            box.classList.add(END_CLASS);
-        }
+        const currentState = this.state.gridMap[j][i];
 
-        console.log('number of ends:', clickedNodes.length);
+        this.state.gridMap[j][i] = currentState === 0 ? 1 : 0;
+        // if (boxZ.classList.contains(WALL_CLASS)) {
+        //     box.classList.remove(WALL_CLASS);
+        // } else {
+        //     if (this.state.startEnd.length < 2 && !box.classList.contains(END_CLASS)) {
+        //         this.state.startEnd.push(box);
+        //     } else {
+        //         clickedNodes.forEach(box => box.classList.remove(END_CLASS));
+        //         clickedNodes = [box];
+        //     }
+        //
+        //     box.classList.add(END_CLASS);
+        // }
+
     },
 
     // ------ rendering ------
 
     render: function() {
-        document.body.appendChild(this.renderContainer(this.state.gridMap));
+        const container = document.getElementById('container')
+
+        container.textContent = '';
+        container.appendChild(this.renderContainer(this.state.gridMap));
+    },
+
+    reRender: function() {
+        this.state.gridMap.forEach(this.reRenderRow);
+    },
+
+    reRenderRow: function(row, i) {
+        row.forEach((nodeState, j) => this.reRenderNode(nodeState, i, j));
+    },
+
+    reRenderNode: function(nodeState, i, j) {
+        const box = document.querySelector(`[data-i="${i}"][data-j="${j}"`);
+        const classes = classNames({
+            [BOX_CLASS]: true,
+            [WALL_CLASS]: nodeState === 1,
+            [END_CLASS]: nodeState === 2
+        });
+
+        box.setAttribute('class', classes);
     },
 
     renderContainer: function(gridMap) {
@@ -70,25 +114,31 @@ const manager = {
     },
 
     renderGrid: function(gridMap) {
-        return gridMap.map(rowMap => this.renderRow(rowMap));
+        return gridMap.map((rowMap, rowIndex) => this.renderRow(rowMap, rowIndex));
     },
 
-    renderRow: function(rowMap) {
+    renderRow: function(rowMap, rowIndex) {
         const row = document.createElement('div');
         row.setAttribute('class', ROW_CLASS);
-        rowMap.forEach(nodeProps => row.appendChild(this.renderNode(nodeProps)));
+        rowMap.forEach((nodeProps, columnIndex) => row.appendChild(this.renderNode(nodeProps, rowIndex, columnIndex)));
 
         return row;
     },
 
-    renderNode: function() {
+    renderNode: function(nodeProps, rowIndex, columnIndex) {
         const node = document.createElement('div');
-        node.setAttribute('class', BOX_CLASS);
 
-        const boundHandleClick = this.handleClick.bind(this);
+        const classes = classNames({
+            [BOX_CLASS]: true,
+            [WALL_CLASS]: nodeProps === 1
+        })
 
-        node.addEventListener('click', this.createReactiveHandler(boundHandleClick));
+        node.setAttribute('class', classes);
+        node.dataset['i'] = columnIndex;
+        node.dataset['j'] = rowIndex;
 
+        node.addEventListener('click', this.createReactiveHandler(this.handleClick.bind(this)));
+        node.addEventListener('mouseenter', this.createReactiveHandler(handleMouseEnter.bind(this)));
         return node;
     }
 }
