@@ -18,43 +18,43 @@ function classNames(classes) {
     return classList.join(' ');
 }
 
-const manager = {
-    state: {
+class Application{
+    state = {
         startEnd: [],
         gridMap: [] // 0 - empty, 1 - wall
-    },
+    };
 
-    initializeState: function(rows, cols) {
+    initializeState = (rows, cols) => {
         this.state.dimensions = { rows, cols };
         this.state.startEnd = [];
 
         for (let y=0; y < rows; y++) {
             this.state.gridMap.push(Array(cols).fill(0))
         }
-    },
+    }
 
-    getDimenstions: function() {
+    getDimenstions = () => {
         return {
             rowsLength: this.state.gridMap.length,
             columnsLength: this.state.gridMap[0].length
         }
-    },
+    }
 
-    createReactiveHandler: function(f) {
+    createReactiveHandler = f => {
         const reactiveHandler = (...args) => {
             f(...args);
             this.reRender();
         }
 
         return reactiveHandler;
-    },
+    };
 
 
-    handleMouseEnter: function (event) {
+    handleMouseEnter = event => {
         console.log('entered');
-    },
+    }
 
-    handleClick: function (event) {
+    handleClick(event) {
         const box = event.target;
 
         const { i, j } = box.dataset;
@@ -75,26 +75,26 @@ const manager = {
         //     box.classList.add(END_CLASS);
         // }
 
-    },
+    }
 
     // ------ rendering ------
 
-    render: function() {
+    render() {
         const container = document.getElementById('container')
 
         container.textContent = '';
         container.appendChild(this.renderContainer(this.state.gridMap));
-    },
+    }
 
-    reRender: function() {
+    reRender = () => {
         this.state.gridMap.forEach(this.reRenderRow);
-    },
+    }
 
-    reRenderRow: function(row, i) {
-        row.forEach((nodeState, j) => this.reRenderNode(nodeState, i, j));
-    },
+    reRenderRow = (row, j) => {
+        row.forEach((nodeState, i) => this.reRenderNode(nodeState, i, j));
+    }
 
-    reRenderNode: function(nodeState, i, j) {
+    reRenderNode = (nodeState, i, j) => {
         const box = document.querySelector(`[data-i="${i}"][data-j="${j}"`);
         const classes = classNames({
             [BOX_CLASS]: true,
@@ -103,29 +103,29 @@ const manager = {
         });
 
         box.setAttribute('class', classes);
-    },
+    }
 
-    renderContainer: function(gridMap) {
+    renderContainer(gridMap) {
         const container = document.createElement('div');
         container.setAttribute('class', 'container');
         this.renderGrid(gridMap).forEach(row => container.appendChild(row));
 
         return container;
-    },
+    }
 
-    renderGrid: function(gridMap) {
+    renderGrid(gridMap) {
         return gridMap.map((rowMap, rowIndex) => this.renderRow(rowMap, rowIndex));
-    },
+    }
 
-    renderRow: function(rowMap, rowIndex) {
+    renderRow(rowMap, rowIndex) {
         const row = document.createElement('div');
         row.setAttribute('class', ROW_CLASS);
         rowMap.forEach((nodeProps, columnIndex) => row.appendChild(this.renderNode(nodeProps, rowIndex, columnIndex)));
 
         return row;
-    },
+    }
 
-    renderNode: function(nodeProps, rowIndex, columnIndex) {
+    renderNode(nodeProps, rowIndex, columnIndex) {
         const node = document.createElement('div');
 
         const classes = classNames({
@@ -246,8 +246,10 @@ function attachBoxHandlers() {
 (function() {
     // createGrid();
     // attachBoxHandlers();
-    manager.initializeState(30, 30);
-    manager.render();
+
+    const app = new Application();
+    app.initializeState(30, 30);
+    app.render();
 })();
 
 
