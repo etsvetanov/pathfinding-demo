@@ -12,6 +12,10 @@
     border: 1px solid black;
 }
 
+.visited-box {
+    background-color: cornflowerblue;
+}
+
 /*.box:hover {*/
 /*    transform: scale(1.2);*/
 /*    background-color: gray;*/
@@ -24,4 +28,19 @@
 
 .wall {
     background-color: black;
+}
+
+.btn {
+    padding: 10px;
+    border: 2px solid black;
+    border-radius: 3px;
+    display: inline-block;
+    width: 100px;
+    margin: 10px;
+    text-align: center;
+    font-weight: bold;
+    font-family: Consolas, serif;
+    font-size: 20px;
+    user-select: none;
+    cursor: pointer;
 }

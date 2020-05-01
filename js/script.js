@@ -4,7 +4,8 @@ const WALL_CLASS = 'wall';
 const END_CLASS = 'end';
 const BOX_CLASS = 'box';
 const ROW_CLASS = 'row';
-
+const BUTTON_CLASS = 'btn';
+const VISITED_CLASS = 'visited-box';
 
 function classNames(classes) {
     const classList = [];
@@ -51,30 +52,66 @@ class Application{
 
 
     handleMouseEnter = event => {
-        console.log('entered');
-    }
+        if (event.buttons !== 1) {
+            return;
+        }
 
-    handleClick(event) {
         const box = event.target;
 
         const { i, j } = box.dataset;
 
-        const currentState = this.state.gridMap[j][i];
+        this.toggleWallBox(i, j);
 
-        this.state.gridMap[j][i] = currentState === 0 ? 1 : 0;
-        // if (boxZ.classList.contains(WALL_CLASS)) {
-        //     box.classList.remove(WALL_CLASS);
-        // } else {
-        //     if (this.state.startEnd.length < 2 && !box.classList.contains(END_CLASS)) {
-        //         this.state.startEnd.push(box);
-        //     } else {
-        //         clickedNodes.forEach(box => box.classList.remove(END_CLASS));
-        //         clickedNodes = [box];
-        //     }
-        //
-        //     box.classList.add(END_CLASS);
-        // }
+        this.reRender();
+    }
 
+    toggleWallBox = (i, j) => {
+        this.state.gridMap[j][i] = this.state.gridMap[j][i] === 0 ? 1 : 0
+    }
+
+    handleMouseDown = event => {
+        if (event.button === 2) {
+            return;
+        }
+
+        const box = event.target;
+
+        const { i, j } = box.dataset;
+
+        this.toggleWallBox(i, j);
+        this.reRender();
+    }
+
+    resetBoxState = ({i, j}) => {
+        this.state.gridMap[j][i] = 0;
+    }
+
+    toggleStartEnd = ({i, j}) => {
+        if (this.state.startEnd.length === 2) {
+            this.state.startEnd.forEach(this.resetBoxState);
+            this.state.startEnd = [];
+        }
+
+        this.state.startEnd.push({i, j});
+        this.state.gridMap[j][i] = 2;
+    }
+
+    handleRightClick = event => {
+        event.preventDefault();
+
+        const box = event.target;
+        const { i, j } = box.dataset;
+
+        this.toggleStartEnd({i, j});
+    }
+
+    handleStart = event => {
+        console.log('START!');
+
+        const OPEN = new Set();  // candidates for examining
+        OPEN.add(this.state.startEnd[0]);
+
+        const CLOSED = new Set();  // examined nodes
     }
 
     // ------ rendering ------
@@ -82,12 +119,34 @@ class Application{
     render() {
         const container = document.getElementById('container')
 
-        container.textContent = '';
+        container.appendChild(this.renderControls());
         container.appendChild(this.renderContainer(this.state.gridMap));
     }
 
     reRender = () => {
+        // window.requestAnimationFrame(() => {
+        //     this.state.gridMap.forEach(this.reRenderRow);
+        // })
         this.state.gridMap.forEach(this.reRenderRow);
+
+    }
+
+    renderControls = () => {
+        const container = document.createElement('div');
+
+        container.appendChild(this.renderStartButton());
+
+        return container;
+    }
+
+    renderStartButton = () => {
+        const button = document.createElement('div');
+        button.setAttribute('class', BUTTON_CLASS);
+        button.innerHTML = 'START';
+
+        button.addEventListener('click', this.handleStart);
+
+        return button;
     }
 
     reRenderRow = (row, j) => {
@@ -99,7 +158,8 @@ class Application{
         const classes = classNames({
             [BOX_CLASS]: true,
             [WALL_CLASS]: nodeState === 1,
-            [END_CLASS]: nodeState === 2
+            [END_CLASS]: nodeState === 2,
+            [VISITED_CLASS]: nodeState === 3
         });
 
         box.setAttribute('class', classes);
@@ -137,8 +197,10 @@ class Application{
         node.dataset['i'] = columnIndex;
         node.dataset['j'] = rowIndex;
 
-        node.addEventListener('click', this.createReactiveHandler(this.handleClick.bind(this)));
-        node.addEventListener('mouseenter', this.createReactiveHandler(handleMouseEnter.bind(this)));
+        node.addEventListener('mousedown', this.handleMouseDown);
+        node.addEventListener('mouseenter',this.handleMouseEnter);
+        node.addEventListener('contextmenu', this.createReactiveHandler(this.handleRightClick));
+        node.addEventListener('dragstart', event => event.preventDefault()); // so there won't be need to handle drag events
         return node;
     }
 }
@@ -189,16 +251,6 @@ function createClickHandler() {
     return handleClick;
 }
 
-function handleMouseEnter(event) {
-    console.log('MOUSE OVER');
-    if (event.buttons !== 1) {
-        return;
-    }
-
-    const box = event.target;
-
-    toggleWallBox(box);
-}
 
 function toggleWallBox(element) {
     if (element.classList.contains(WALL_CLASS)) {
@@ -237,17 +289,17 @@ function attachBoxHandlers() {
         // box.addEventListener('mousedown', handleMouseDown);
         box.addEventListener('dragenter', handleDragOver);
         box.addEventListener('dragstart', () => console.log('DRAG START'));
-    };
+    }
 }
 
 
 
 
 (function() {
-    // createGrid();
-    // attachBoxHandlers();
-
     const app = new Application();
+
+    window.app = app;
+
     app.initializeState(30, 30);
     app.render();
 })();
