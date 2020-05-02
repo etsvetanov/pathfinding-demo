@@ -1,11 +1,13 @@
-const X_NODES_NUM = 30;
-const Y_NODES_NUM = 30;
+const X_NODES_NUM = 40;
+const Y_NODES_NUM = 20;
 const WALL_CLASS = 'wall';
 const END_CLASS = 'end';
 const BOX_CLASS = 'box';
 const ROW_CLASS = 'row';
 const BUTTON_CLASS = 'btn';
 const VISITED_CLASS = 'visited-box';
+
+const possibleAxisSteps = [-1, 1, 0]
 
 function classNames(classes) {
     const classList = [];
@@ -105,13 +107,76 @@ class Application{
         this.toggleStartEnd({i, j});
     }
 
+    getHeuristicDistanceForNode = ({ i, j}) => {
+        const end = this.state.startEnd[1];
+
+        if (!end) {
+            return null;
+        }
+
+        return Math.abs(end.i - i) ** 2 + Math.abs(end.j - j) ** 2
+    }
+
     handleStart = event => {
-        console.log('START!');
+        // f = g + h (total cost of the node)
+        // g - distance between the current node and the start node
+        // h - heuristic - estimated distance from the current node to the end node
 
-        const OPEN = new Set();  // candidates for examining
-        OPEN.add(this.state.startEnd[0]);
+        const start = this.state.startEnd[0];
+        const end = this.state.startEnd[1];
 
-        const CLOSED = new Set();  // examined nodes
+        const OPEN = [];  // candidates for examining
+        const CLOSED = [];  // examined nodes
+
+        OPEN.push({ ...start, g: 0, h: this.getHeuristicDistanceForNode({ ...start }) });
+
+        while (OPEN[0].i !== end.i && OPEN[0].j !== end.j) {
+            const current = OPEN.splice(0, 1);
+
+            CLOSED.push(current);
+
+            for (let neighbour of this.getNodeNeighbours({ i: current.i, j: current.j})) {
+                const {i, j} = neighbour;
+                const g = current.g + 1;
+
+                const neighbourAlreadyInOPEN = OPEN.find(node => node.i === i && node.j === j);
+
+                if (neighbourAlreadyInOPEN && neighbourAlreadyInOPEN.g > g) {
+
+                }
+
+                OPEN.push({ i, j, g, h: this.getHeuristicDistanceForNode({ i, j })});
+            }
+
+            // sort by lowest f first
+            OPEN.sort((a, b) => a.g + a.h < b.g + b.h ? -1 : 1);
+        }
+
+
+    }
+
+
+    getNodeNeighbours = ({ i, j }) => {
+        const possibleMoves = [
+            {i: 0, j: -1},
+            {i: 0, j: +1},
+            {i: -1, j: 0},
+            {i: +1, j: 0}
+        ];
+
+        const neighbours = possibleMoves.map(possibleMove => {
+            const newI = i + possibleMove.i;
+            const newJ = j + possibleMove.j;
+
+            const { rowsLength, columnsLength } = this.getDimenstions();
+
+            if (newI < 0 || newI >= columnsLength || newJ <0 || newJ >= rowsLength) return null;
+
+            return {i: newI, j: newJ, state: this.state.gridMap[newJ][newI]};
+        });
+
+        // filter coordinates outside of the grid and walls
+        return neighbours.filter(n => n !== null && n.state !== 1);
     }
 
     // ------ rendering ------
@@ -205,27 +270,6 @@ class Application{
     }
 }
 
-function createGrid() {
-    const containerDiv = document.createElement('div');
-    containerDiv.setAttribute('class', 'container');
-
-    for (let y=1; y <= Y_NODES_NUM; y++ ) {
-        const yDiv = document.createElement('div');
-        yDiv.setAttribute('class', 'row');
-
-        for (let x=1; x <= X_NODES_NUM; x++) {
-            const xDiv = document.createElement('div');
-            xDiv.setAttribute('class', BOX_CLASS);
-
-            yDiv.appendChild(xDiv);
-        }
-
-        containerDiv.appendChild(yDiv);
-    }
-
-    document.body.appendChild(containerDiv);
-}
-
 function createClickHandler() {
     let clickedNodes = [];
 
@@ -300,7 +344,7 @@ function attachBoxHandlers() {
 
     window.app = app;
 
-    app.initializeState(30, 30);
+    app.initializeState(Y_NODES_NUM, X_NODES_NUM);
     app.render();
 })();
 
