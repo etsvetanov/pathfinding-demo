@@ -1,3 +1,7 @@
+// import { observable } from 'https://cdn.skypack.dev/mobx';
+//
+// window.observable = observable;
+
 const X_NODES_NUM = 40;
 const Y_NODES_NUM = 20;
 const WALL_CLASS = 'wall';
@@ -6,7 +10,13 @@ const BOX_CLASS = 'box';
 const ROW_CLASS = 'row';
 const BUTTON_CLASS = 'btn';
 const VISITED_CLASS = 'visited-box';
-
+const PATH_CLASS = 'path-box';
+const CURRENT_NODE_DISPLAY = 'current-node-display';
+const CURRENT_NODE_DISPLAY_ID = 'current-node-display-id';
+const CONTROLS_CONTAINER = 'controls-container';
+const INFO_CONTAINER = 'info-container';
+const INFO_CONTAINER_ID = 'info-container-id';
+const QUEUED_CLASS = 'queued-box';
 const possibleAxisSteps = [-1, 1, 0]
 
 function classNames(classes) {
@@ -21,9 +31,16 @@ function classNames(classes) {
     return classList.join(' ');
 }
 
+function createPathNode({ i, j, g, h, parent = null }) {
+    return {
+        i, j, g, h, parent
+    }
+}
+
 class Application{
     state = {
         startEnd: [],
+        path: new Map(),
         gridMap: [] // 0 - empty, 1 - wall
     };
 
@@ -104,7 +121,7 @@ class Application{
         const box = event.target;
         const { i, j } = box.dataset;
 
-        this.toggleStartEnd({i, j});
+        this.toggleStartEnd({ i: parseInt(i, 10), j: parseInt(j, 10)});
     }
 
     getHeuristicDistanceForNode = ({ i, j}) => {
@@ -117,7 +134,33 @@ class Application{
         return Math.abs(end.i - i) ** 2 + Math.abs(end.j - j) ** 2
     }
 
-    handleStart = event => {
+    tracePath = node => {
+        let current = node;
+        const path = [current];
+
+        while (current.parent) {
+            path.push(current.parent);
+            current = current.parent;
+        }
+
+        return path;
+    }
+
+    generateNodeHash = node => `${node.i}, ${node.j}`;
+
+    generatePathMap = pathArr => {
+        const pathMap = new Map();
+
+        pathArr.forEach(node => {
+            pathMap.set(this.generateNodeHash(node), node);
+        })
+
+        return pathMap;
+    }
+
+
+
+    handleStart = async event => {
         // f = g + h (total cost of the node)
         // g - distance between the current node and the start node
         // h - heuristic - estimated distance from the current node to the end node
@@ -126,34 +169,92 @@ class Application{
         const end = this.state.startEnd[1];
 
         const OPEN = [];  // candidates for examining
-        const CLOSED = [];  // examined nodes
+        const CLOSED = [];  // examined nodes'
 
-        OPEN.push({ ...start, g: 0, h: this.getHeuristicDistanceForNode({ ...start }) });
+        OPEN.push(createPathNode({
+            i: start.i,
+            j: start.j,
+            g: 0,
+            h: this.getHeuristicDistanceForNode({ ...start })
+        }));
 
-        while (OPEN[0].i !== end.i && OPEN[0].j !== end.j) {
-            const current = OPEN.splice(0, 1);
+        // OPEN.push({ ...start, g: 0, h: this.getHeuristicDistanceForNode({ ...start }) });
+
+        let current;
+
+        do {
+            current = OPEN.splice(0, 1)[0];
+
+            this.state.gridMap[current.j][current.i] = 3;
+            this.reRenderNode(3, current.i, current.j);
+
+            await sleepTillNextFrame(); // await rerender;
 
             CLOSED.push(current);
 
             for (let neighbour of this.getNodeNeighbours({ i: current.i, j: current.j})) {
+                console.log(`... inspect neighbor: ${neighbour.i} ${neighbour.j}`)
                 const {i, j} = neighbour;
-                const g = current.g + 1;
+                const g = current.g + 1;  // cost
 
-                const neighbourAlreadyInOPEN = OPEN.find(node => node.i === i && node.j === j);
-
-                if (neighbourAlreadyInOPEN && neighbourAlreadyInOPEN.g > g) {
-
+                const neighbourAlreadyInOPENIndex = OPEN.findIndex(node => node.i === i && node.j === j);
+                const neighbourAlreadyInOPEN = OPEN[neighbourAlreadyInOPENIndex];
+                if (neighbourAlreadyInOPEN && g < neighbourAlreadyInOPEN.g) {
+                    // remove neighbor from OPEN, because new path is better
+                    OPEN.splice(neighbourAlreadyInOPENIndex, 1);
                 }
 
-                OPEN.push({ i, j, g, h: this.getHeuristicDistanceForNode({ i, j })});
+                const neighborAlreadyInCLOSEDIndex = CLOSED.findIndex(node => node.i === i && node.j === j);
+                const neighborAlreadyInCLOSED = CLOSED[neighborAlreadyInCLOSEDIndex];
+
+                if (neighborAlreadyInCLOSED && g < neighborAlreadyInCLOSED.g) {
+                    // remove neighbor from CLOSED, because we need to re-open?
+                    CLOSED.splice(neighborAlreadyInCLOSEDIndex, 1);
+                }
+
+                if (OPEN.findIndex(node => node.i === i && node.j === j) === -1
+                    && CLOSED.findIndex(node => node.i === i && node.j === j) === -1) {
+                    OPEN.push(createPathNode({
+                        i, j, g,
+                        h: this.getHeuristicDistanceForNode({ i, j }),
+                        parent: current
+                    }));
+
+                    this.state.gridMap[j][i] = 4;
+                    this.reRenderNode(4, i, j);
+
+                    await sleepTillNextFrame();
+                }
             }
 
             // sort by lowest f first
             OPEN.sort((a, b) => a.g + a.h < b.g + b.h ? -1 : 1);
+        } while (OPEN.length
+                && OPEN[0].i !== end.i
+                || OPEN[0].j !== end.j
+            )
+
+
+        console.log('OPEN:', OPEN);
+        console.log('CURRENT:', current);
+
+        if (OPEN.length && OPEN[0].i === end.i && OPEN[0].j === end.j) {
+            const path = this.tracePath(current);
+            path.reverse();
+
+            this.state.path = this.generatePathMap(path);
+            console.log('path:', path);
+
+            this.reRender();
+
+        } else {
+            console.log('NO PATH!');
         }
 
 
     }
+
+    handlePath
 
 
     getNodeNeighbours = ({ i, j }) => {
@@ -192,14 +293,18 @@ class Application{
         // window.requestAnimationFrame(() => {
         //     this.state.gridMap.forEach(this.reRenderRow);
         // })
+        this.reRenderInfo(...this.state.startEnd);
         this.state.gridMap.forEach(this.reRenderRow);
 
     }
 
     renderControls = () => {
         const container = document.createElement('div');
+        container.setAttribute('class', CONTROLS_CONTAINER);
 
         container.appendChild(this.renderStartButton());
+        container.appendChild(this.renderCurrentNodeDisplay());
+        container.appendChild(this.renderInfo());
 
         return container;
     }
@@ -214,6 +319,41 @@ class Application{
         return button;
     }
 
+    renderCurrentNodeDisplay = () => {
+        const div = document.createElement('div');
+        div.setAttribute('class', CURRENT_NODE_DISPLAY);
+        div.setAttribute('id', CURRENT_NODE_DISPLAY_ID);
+        div.innerHTML = '';
+
+        return div;
+
+    }
+
+    renderInfo = () => {
+        const div = document.createElement('div');
+        div.setAttribute('class', INFO_CONTAINER);
+        div.setAttribute('id', INFO_CONTAINER_ID);
+
+        return div;
+    }
+
+    reRenderInfo = (start, end) => {
+        const div = document.getElementById(INFO_CONTAINER_ID);
+
+        if (start){
+            const startInfo = `Start = { i: ${start.i}, j: ${start.j} }; `;
+
+            div.innerHTML = startInfo;
+        }
+
+        if (end) {
+            const endInfo = `End = { i: ${end.i}, j: ${end.j} }`;
+
+            div.innerHTML += endInfo;
+        }
+    }
+
+
     reRenderRow = (row, j) => {
         row.forEach((nodeState, i) => this.reRenderNode(nodeState, i, j));
     }
@@ -224,7 +364,9 @@ class Application{
             [BOX_CLASS]: true,
             [WALL_CLASS]: nodeState === 1,
             [END_CLASS]: nodeState === 2,
-            [VISITED_CLASS]: nodeState === 3
+            [VISITED_CLASS]: nodeState === 3,
+            [QUEUED_CLASS]: nodeState === 4,
+            [PATH_CLASS]: this.state.path.has(this.generateNodeHash({ i, j }))
         });
 
         box.setAttribute('class', classes);
@@ -250,6 +392,13 @@ class Application{
         return row;
     }
 
+    handleDisplayCurrent = event => {
+        const el = event.target;
+        const { i, j } = el.dataset;
+
+        document.getElementById(CURRENT_NODE_DISPLAY_ID).innerHTML = `i: ${i} j: ${j}`;
+    }
+
     renderNode(nodeProps, rowIndex, columnIndex) {
         const node = document.createElement('div');
 
@@ -264,10 +413,14 @@ class Application{
 
         node.addEventListener('mousedown', this.handleMouseDown);
         node.addEventListener('mouseenter',this.handleMouseEnter);
+        node.addEventListener('mouseenter', this.handleDisplayCurrent);
         node.addEventListener('contextmenu', this.createReactiveHandler(this.handleRightClick));
-        node.addEventListener('dragstart', event => event.preventDefault()); // so there won't be need to handle drag events
+        // so there won't be need to handle drag events
+        node.addEventListener('dragstart', event => event.preventDefault());
         return node;
     }
+
+    getNode = ({ i, j}) => this.state.gridMap[j][i];
 }
 
 function createClickHandler() {
@@ -336,6 +489,9 @@ function attachBoxHandlers() {
     }
 }
 
+function sleepTillNextFrame() {
+    return new Promise(requestAnimationFrame);
+}
 
 
 

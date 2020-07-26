@@ -16,6 +16,14 @@
     background-color: cornflowerblue;
 }
 
+.queued-box {
+    background-color: darkgrey;
+}
+
+.path-box {
+    background-color: lightgreen;
+}
+
 /*.box:hover {*/
 /*    transform: scale(1.2);*/
 /*    background-color: gray;*/
@@ -43,4 +51,22 @@
     font-size: 20px;
     user-select: none;
     cursor: pointer;
+}
+
+.current-node-display {
+    font-family: monospace;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.controls-container {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+}
+
+.info-container {
+    font-family: monospace;
+    font-size: 28px;
+    font-weight: bold;
 }
