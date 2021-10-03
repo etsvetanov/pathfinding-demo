@@ -160,7 +160,7 @@ class Application{
 
 
 
-    handleStart = async event => {
+    handleStart = async () => {
         // f = g + h (total cost of the node)
         // g - distance between the current node and the start node
         // h - heuristic - estimated distance from the current node to the end node
@@ -227,7 +227,7 @@ class Application{
                 }
             }
 
-            // sort by lowest f first
+            // sort by lowest f first3
             OPEN.sort((a, b) => a.g + a.h < b.g + b.h ? -1 : 1);
         } while (OPEN.length
                 && OPEN[0].i !== end.i
@@ -253,8 +253,6 @@ class Application{
 
 
     }
-
-    handlePath
 
 
     getNodeNeighbours = ({ i, j }) => {
@@ -423,71 +421,6 @@ class Application{
     getNode = ({ i, j}) => this.state.gridMap[j][i];
 }
 
-function createClickHandler() {
-    let clickedNodes = [];
-
-    function handleClick (event) {
-        const box = event.target;
-
-        if (box.classList.contains(WALL_CLASS)) {
-            box.classList.remove(WALL_CLASS);
-        } else {
-            if (clickedNodes.length < 2 && !box.classList.contains(END_CLASS)) {
-                clickedNodes.push(box);
-            } else {
-                clickedNodes.forEach(box => box.classList.remove(END_CLASS));
-                clickedNodes = [box];
-            }
-
-            box.classList.add(END_CLASS);
-        }
-
-        console.log('number of ends:', clickedNodes.length);
-    }
-
-    return handleClick;
-}
-
-
-function toggleWallBox(element) {
-    if (element.classList.contains(WALL_CLASS)) {
-        element.classList.remove(WALL_CLASS)
-    } else if(!element.classList.contains(END_CLASS)) {
-        element.classList.add(WALL_CLASS);
-    }
-}
-
-function handleMouseDown(event) {
-    const box = event.target;
-
-    if (!box.classList.contains(WALL_CLASS) && !box.classList.contains(END_CLASS)) {
-        box.classList.remove(WALL_CLASS);
-    }
-}
-
-function handleDragOver(event) {
-    const box = event.target;
-
-    toggleWallBox(box);
-    // console.log('DRAGGED OVER');
-}
-
-function getAllBoxes() {
-    return document.getElementsByClassName(BOX_CLASS);
-}
-
-function attachBoxHandlers() {
-    const clickHandler = createClickHandler();
-    const boxes = getAllBoxes();
-
-    for (let box of boxes) {
-        box.addEventListener('mouseover', handleMouseEnter);
-        box.addEventListener('click', clickHandler);
-        // box.addEventListener('mousedown', handleMouseDown);
-        box.addEventListener('dragenter', handleDragOver);
-        box.addEventListener('dragstart', () => console.log('DRAG START'));
-    }
-}
 
 function sleepTillNextFrame() {
     return new Promise(requestAnimationFrame);
